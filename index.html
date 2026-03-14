@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FeedXL8</title>
+  <style>
+    :root {
+      --brand: #1e3a5f;
+      --accent: #2563eb;
+      --bg: #f7f8fa;
+      --card: #fff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+
+    header { background: var(--brand); padding: 14px 24px; }
+    header h1 { color: #fff; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+
+    .toolbar {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 10px 24px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    input[type="search"] {
+      flex: 1; min-width: 220px; border: 1px solid var(--border);
+      border-radius: 6px; padding: 7px 12px; font-size: 14px; outline: none;
+    }
+    input[type="search"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #2563eb22; }
+    select, input[type="date"] {
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 7px 10px; font-size: 14px; background: #fff; outline: none;
+    }
+    select:focus, input[type="date"]:focus { border-color: var(--accent); }
+    label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+    button#clear {
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 7px 14px; font-size: 13px; background: #fff; cursor: pointer; color: var(--muted);
+    }
+    button#clear:hover { background: var(--bg); }
+
+    main { max-width: 860px; margin: 0 auto; padding: 16px 24px; }
+
+    .result {
+      background: var(--card); border-radius: 8px; border: 1px solid var(--border);
+      padding: 14px 16px; margin-bottom: 10px; display: flex; gap: 14px;
+      transition: box-shadow 0.15s;
+    }
+    .result:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .left { width: 120px; flex: 0 0 120px; }
+    .right { flex: 1; min-width: 0; }
+    .thumb { width: 120px; height: 76px; object-fit: cover; border-radius: 5px; }
+    .title { font-weight: 600; font-size: 16px; margin-bottom: 5px; line-height: 1.35; }
+    .title a { color: var(--text); text-decoration: none; }
+    .title a:hover { color: var(--accent); }
+    .meta { color: var(--muted); font-size: 12px; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .badge { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+    .summary { font-size: 14px; color: #374151; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <header><h1>FeedXL8</h1></header>
+
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Search title, summary or publisher…" autofocus />
+    <label>Limit: <select id="limit"><option>10</option><option selected>20</option><option>50</option></select></label>
+    <label>Country: <select id="country"><option value="">(any)</option></select></label>
+    <label>Publisher: <select id="publisher"><option value="">(any)</option></select></label>
+    <label>From: <input id="date_from" type="date" /></label>
+    <label>To: <input id="date_to" type="date" /></label>
+    <button id="clear">Clear</button>
+  </div>
+
+  <main><div id="results"></div></main>
+
+<script>
+  // Meilisearch is accessed via the server-side proxy — no secrets in the browser.
+  const MEILI_URL = "/meili";
+  const INDEX     = "news"; // must match meili_index in feedxl8.conf
+
+  const qInput = document.getElementById("q");
+  const limitSelect = document.getElementById("limit");
+  const countrySel = document.getElementById("country");
+  const publisherSel = document.getElementById("publisher");
+  const dateFrom = document.getElementById("date_from");
+  const dateTo = document.getElementById("date_to");
+  const clearBtn = document.getElementById("clear");
+  const resultsDiv = document.getElementById("results");
+
+  const HEADERS = { "Content-Type": "application/json" };
+
+  function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
+  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+  function fmtDate(iso){
+    if(!iso) return "";
+    try{ return new Date(iso).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
+    catch{ return iso; }
+  }
+
+  function renderHit(hit){
+    const container = document.createElement("div");
+    container.className = "result";
+    const left = document.createElement("div"); left.className = "left";
+    const right = document.createElement("div"); right.className = "right";
+
+    if(hit.image_url){
+      const img = document.createElement("img");
+      img.src = hit.image_url; img.className = "thumb"; img.alt = "";
+      left.appendChild(img);
+    }
+
+    const title = document.createElement("div"); title.className = "title";
+    const link = hit.link || hit.url || "#";
+    title.innerHTML = `<a href="${escapeAttr(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hit.title||"(no title)")}</a>`;
+
+    const meta = document.createElement("div"); meta.className = "meta";
+    if(hit.publisher) meta.appendChild(Object.assign(document.createElement("span"),{textContent: hit.publisher}));
+    if(hit.published) meta.appendChild(Object.assign(document.createElement("span"),{textContent: fmtDate(hit.published)}));
+    if(hit.country){
+      const b = document.createElement("span"); b.className = "badge"; b.textContent = hit.country;
+      meta.appendChild(b);
+    }
+
+    const summary = document.createElement("div"); summary.className = "summary";
+    summary.textContent = hit.summary || "";
+
+    right.append(title, meta, summary);
+    container.append(left, right);
+    return container;
+  }
+
+  function buildFilter(){
+    const parts = [];
+    const c = countrySel.value.trim();
+    if(c) parts.push(`country = "${c.replace(/"/g,'\\"')}"`);
+    const p = publisherSel.value.trim();
+    if(p) parts.push(`publisher = "${p.replace(/"/g,'\\"')}"`);
+    if(dateFrom.value) parts.push(`published >= ${JSON.stringify(dateFrom.value)}`);
+    if(dateTo.value) parts.push(`published <= ${JSON.stringify(dateTo.value)}`);
+    return parts.length ? parts.join(" AND ") : null;
+  }
+
+  async function search(q, limit=20){
+    const res = await fetch(`${MEILI_URL}/indexes/${encodeURIComponent(INDEX)}/search`, {
+      method: "POST", headers: HEADERS,
+      body: JSON.stringify({ q, limit, filter: buildFilter(), sort: ["published:desc"],
+        attributesToRetrieve: ["title","summary","link","url","image_url","published","publisher","feedid","country"] })
+    });
+    if(!res.ok) throw new Error(res.status + " " + await res.text());
+    return res.json();
+  }
+
+  async function loadFacets(){
+    try{
+      const res = await fetch(`${MEILI_URL}/indexes/${encodeURIComponent(INDEX)}/search`, {
+        method: "POST", headers: HEADERS,
+        body: JSON.stringify({ q: "", limit: 0, facets: ["country", "publisher"] })
+      });
+      if(!res.ok) return;
+      const { facetDistribution = {} } = await res.json();
+      const addOptions = (sel, dist) => {
+        Object.keys(dist).filter(Boolean).sort((a,b)=>a.localeCompare(b)).forEach(v => {
+          sel.appendChild(Object.assign(document.createElement("option"),{value:v,textContent:v}));
+        });
+      };
+      if(facetDistribution.country)   addOptions(countrySel,   facetDistribution.country);
+      if(facetDistribution.publisher) addOptions(publisherSel, facetDistribution.publisher);
+    }catch(e){ console.warn("Failed to load facets:", e); }
+  }
+
+  let timer = null;
+  function scheduleSearch(){ clearTimeout(timer); timer = setTimeout(doSearch, 250); }
+
+  qInput.addEventListener("input", scheduleSearch);
+  limitSelect.addEventListener("change", scheduleSearch);
+  countrySel.addEventListener("change", e => { if(publisherSel.value) publisherSel.value = ""; scheduleSearch(e); });
+  publisherSel.addEventListener("change", e => { if(countrySel.value) countrySel.value = ""; scheduleSearch(e); });
+  dateFrom.addEventListener("change", scheduleSearch);
+  dateTo.addEventListener("change", scheduleSearch);
+  clearBtn.addEventListener("click", () => {
+    [countrySel, publisherSel].forEach(s => s.value = "");
+    [dateFrom, dateTo, qInput].forEach(i => i.value = "");
+    scheduleSearch();
+  });
+
+  async function doSearch(){
+    const q = qInput.value.trim();
+    const limit = parseInt(limitSelect.value, 10) || 20;
+    resultsDiv.innerHTML = "<div style='color:var(--muted);padding:8px 0'>Searching…</div>";
+    try{
+      const { hits = [] } = await search(q, limit);
+      if(!hits.length){ resultsDiv.innerHTML = "<p style='color:var(--muted);padding:8px 0'>No results</p>"; return; }
+      resultsDiv.innerHTML = "";
+      hits.forEach(h => resultsDiv.appendChild(renderHit(h)));
+    }catch(err){
+      resultsDiv.innerHTML = `<pre style="color:crimson;font-size:13px">${escapeHtml(err.message)}</pre>`;
+      console.error(err);
+    }
+  }
+
+  loadFacets().then(() => doSearch());
+</script>
+</body>
+</html>
