@@ -65,6 +65,7 @@ sequenceDiagram
 - Python 3.10+
 - [Ollama](https://ollama.com) with a translation-capable model pulled (e.g. `translategemma`)
 - Meilisearch — see [meilisearch-howto.md](meilisearch-howto.md) for a bare-metal setup guide
+- Python packages: `feedparser`, `requests`, `Pillow` — installed via `pip install -r requirements.txt`. On Linux, Pillow requires system libraries; install them first with `apt install libjpeg-dev zlib1g-dev` (Debian/Ubuntu) or the equivalent for your distribution.
 
 ## Installation
 
