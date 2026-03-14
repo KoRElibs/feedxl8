@@ -58,6 +58,8 @@ sequenceDiagram
 | Publisher | `feedxl8_publisher.py` | Pushes translated items into the Meilisearch index |
 | Webserver | `feedxl8_webserver.py` | Serves the frontend and proxies Meilisearch queries (API key never exposed to the browser) |
 
+![FeedXL8 web interface](docs/images/feedxl8-webpage.jpg)
+
 ## Prerequisites
 
 - Python 3.10+
