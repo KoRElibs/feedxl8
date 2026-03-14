@@ -155,9 +155,25 @@ If you need consistent SVG flag rendering across all platforms, [flag-icons](htt
 
 The webserver proxies all article images through `/imgproxy` rather than serving them directly from their source URLs. Every image is fully decoded to raw pixels and re-encoded as a fresh JPEG before being cached and served — stripping all EXIF data, ICC profiles, and embedded metadata. This eliminates image-based exploit payloads, prevents the browser from leaking the user's IP to third-party image hosts, and reduces bandwidth by resizing images to a configurable maximum resolution.
 
+### Translation performance tuning
+
+Three parameters control how much text is sent to Ollama per translation call. Getting these right is important: too large and the model runs out of context and starts dropping or garbling items; too small and throughput is poor.
+
+| Parameter | What it controls |
+|---|---|
+| `max_translate_batch_size` | Maximum total size of one batch sent to Ollama, in UTF-8 bytes. Covers all items combined, including the `\|\|PARA_N\|\|` tokens. |
+| `max_feed_summary_size` | Maximum characters taken from each article summary before it is added to a batch. Long summaries are truncated. |
+| `translate_timeout_seconds` | How long the translator waits for Ollama to respond before giving up on a batch and moving on. |
+
+The defaults (`max_translate_batch_size = 2000`, `max_feed_summary_size = 400`, `translate_timeout_seconds = 50`) are intentionally conservative — they were tuned for a **NVIDIA GTX 1660 Super (6 GB VRAM)** running `translategemma`. On this hardware a batch typically takes 10–30 seconds.
+
+If your GPU has more VRAM or you are using a faster model, you can experiment with larger values to improve throughput. A reasonable approach is to double `max_translate_batch_size` and `max_feed_summary_size`, observe whether translation quality and completeness hold up, and increase `translate_timeout_seconds` proportionally. The right values depend on your specific model, its quantisation level, and how Ollama manages context — there is no universal formula.
+
+If you see log warnings about missing items in a batch, reduce `max_translate_batch_size` — the model is likely hitting its context limit and dropping items silently.
+
 ### Other settings
 
-`feedxl8.conf.example` documents all remaining options: scan and publish intervals, file retention, translation batch sizes, webserver host/port, and TLS configuration.
+`feedxl8.conf.example` documents all remaining options: scan and publish intervals, file retention, webserver host/port, and TLS configuration.
 
 ## License
 
