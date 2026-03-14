@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FeedXL8</title>
+  <link rel="stylesheet" href="feedxl8.css" />
+</head>
+<body>
+  <header><h1>FeedXL8</h1></header>
+
+  <div class="ai-notice">
+    All article titles and summaries are machine-translated by an AI model and may contain errors or mistranslations. Always consult the original source before acting on any information.
+  </div>
+
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Search title, summary or publisher…" autofocus />
+    <label>Limit: <select id="limit"><option>10</option><option selected>20</option><option>50</option></select></label>
+    <label>Country: <select id="country"><option value="">(any)</option></select></label>
+    <label>Publisher: <select id="publisher"><option value="">(any)</option></select></label>
+    <label>From: <input id="date_from" type="date" /></label>
+    <label>To: <input id="date_to" type="date" /></label>
+    <button id="clear">Clear</button>
+  </div>
+
+  <main><div id="results"></div></main>
+
+  <script src="feedxl8.js"></script>
+</body>
+</html>

@@ -33,8 +33,14 @@ class FeedXL8Handler(SimpleHTTPRequestHandler):
     _image_cache_dir    = ''
     _image_max_width    = 480
     _image_max_height   = 300
+    _security_headers   = {}
     _img_locks          = {}
     _img_locks_lock     = threading.Lock()
+
+    def end_headers(self):
+        for name, value in self.__class__._security_headers.items():
+            self.send_header(name, value)
+        super().end_headers()
 
     def _proxy(self, method):
         target = self._meili_url + self.path[len(PROXY_PREFIX):]
@@ -229,7 +235,21 @@ class FeedXL8Webserver:
         FeedXL8Handler._image_max_width  = self.image_max_width
         FeedXL8Handler._image_max_height = self.image_max_height
 
-        serve_dir = os.path.dirname(os.path.abspath(__file__))
+        sec = {
+            'Content-Security-Policy':
+                "default-src 'none'; script-src 'self'; style-src 'self'; "
+                "img-src 'self'; connect-src 'self'; base-uri 'self'; "
+                "form-action 'none'; frame-ancestors 'none'",
+            'X-Frame-Options':        'DENY',
+            'X-Content-Type-Options': 'nosniff',
+            'Referrer-Policy':        'no-referrer',
+            'Permissions-Policy':     'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+        }
+        if self.tls:
+            sec['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        FeedXL8Handler._security_headers = sec
+
+        serve_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'www')
         handler = partial(FeedXL8Handler, directory=serve_dir)
         self._server = HTTPServer((self.host, self.port), handler)
 
