@@ -39,7 +39,7 @@ class FeedXL8Translator:
             config.read(self.config_file, encoding='utf-8')
             s = config['settings']
             self.target_languages = [{'language': s['target_language'], 'language_code': s['target_language_code']}]
-            self.scan_interval = int(s.get('scan_interval_minutes', 15)) * 60
+            self.scan_interval = int(s.get('translate_interval_minutes', 15)) * 60
             self.translate_timeout = int(s.get('translate_timeout_seconds', 30))
             self.max_translate_batch_size = int(s.get('max_translate_batch_size', 4000))
             self.max_feed_summary_size = int(s.get('max_feed_summary_size', 400))
@@ -118,7 +118,7 @@ class FeedXL8Translator:
                         title = re.sub(r'\s*\r?\n\s*', ' ', item.get("title", ""))
                         summary = self._crop_feed_summary(re.sub(r'\s*\r?\n\s*', ' ', item.get("summary", "")))
                         sep = f"||PARA_{len(batch) + 1}||"
-                        candidate = ("" if not batch else "\n") + f"{sep}\n{title}\n{summary}"
+                        candidate = ("" if not batch else "\n") + f"{sep}\n{title}\n||S||\n{summary}"
                         if batch and len((text_batch + candidate).encode('utf-8')) > self.max_translate_batch_size:
                             break
                         text_batch += candidate
@@ -153,8 +153,13 @@ class FeedXL8Translator:
                     text = result_map[i]
                     try:
                         item = json.loads(json_path.read_text(encoding="utf-8"))
-                        item["title"] = text.split("\n")[0] if "\n" in text else text
-                        item["summary"] = "\n".join(text.split("\n")[1:]) if "\n" in text else ""
+                        if "||S||" in text:
+                            parts = text.split("||S||", 1)
+                            item["title"] = parts[0].strip()
+                            item["summary"] = parts[1].strip()
+                        else:
+                            item["title"] = text.split("\n")[0] if "\n" in text else text
+                            item["summary"] = "\n".join(text.split("\n")[1:]) if "\n" in text else ""
                         target_dir = Path(self.translated_dir) / target_language / target_language_code / publisher
                         target_dir.mkdir(parents=True, exist_ok=True)
                         (target_dir / json_path.name).write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")

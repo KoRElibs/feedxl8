@@ -90,7 +90,45 @@ For production, systemd unit files are provided in the [`systemd/`](systemd/) di
 
 ## Configuration
 
-Copy `feedxl8.conf.example` to `feedxl8.conf`. Feed sources are defined as INI sections:
+All configuration lives in `feedxl8.conf` (copied from `feedxl8.conf.example` during installation).
+
+### Ollama
+
+Point FeedXL8 at your Ollama instance and choose a translation-capable model:
+
+```ini
+ollama_url   = http://localhost:11434
+ollama_model = translategemma
+```
+
+The model must already be pulled on the Ollama server (`ollama pull translategemma`). The translator will fail silently on every batch until this is correct.
+
+### Meilisearch
+
+Provide the URL and an API key with write access:
+
+```ini
+meili_url     = http://localhost:7700
+meili_api_key = your-master-or-write-key
+meili_index   = news
+```
+
+See [meilisearch-howto.md](meilisearch-howto.md) for a bare-metal setup guide including index creation and API key configuration.
+
+### Target language
+
+Set the language all content will be translated into:
+
+```ini
+target_language      = Norwegian
+target_language_code = nb-NO
+```
+
+> Only one target language is supported at a time.
+
+### Feed sources
+
+Each RSS feed is an INI section. The section name becomes the publisher identifier in the search index:
 
 ```ini
 [spiegel.de]
@@ -100,9 +138,20 @@ language      = English
 language_code = en-GB
 ```
 
-See `feedxl8.conf.example` for all available settings including scan intervals, retention, Ollama model, translation batching, and TLS configuration.
+`feedxl8.conf.example` includes example feed sources with a focus on European news outlets.
+
+### Other settings
+
+`feedxl8.conf.example` documents all remaining options: scan and publish intervals, file retention, translation batch sizes, webserver host/port, and TLS configuration.
 
 ## License
 
 Licensed under the [European Union Public Licence v1.2 (EUPL-1.2)](LICENSE).
 Copyright © 2026 KoRElibs.com
+
+The EUPL is an open source licence created by the European Commission and legally reviewed for all EU jurisdictions. It is less widely known than MIT or Apache, but it is straightforward to understand in practice:
+
+- **Running FeedXL8 — including commercially — carries no obligations.** Use it on your own infrastructure however you like.
+- **It is not viral.** Linking your own code against FeedXL8, or building a larger system that calls it, does not pull your code under the EUPL. Components remain independently licensed.
+- **Copyleft applies only if you distribute a modified version of FeedXL8 itself.** In that case, your modifications must be released under the EUPL — but only those modifications, not your surrounding systems.
+In short: use it freely, build on top of it freely, and only share back if you ship a modified FeedXL8 to others.

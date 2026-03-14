@@ -105,8 +105,10 @@ class FeedXL8Scanner:
         logging.debug(f"{feed['publisher']} - scanning {feed['url']}")
         parsed = feedparser.parse(feed['url'])
         if parsed.bozo:
-            logging.error(f"Feed parse error: {parsed.bozo_exception}")
-            return
+            if not parsed.entries:
+                logging.error(f"Feed error (skipping) [{feed['publisher']}]: {parsed.bozo_exception}")
+                return
+            logging.warning(f"Feed parse warning (continuing) [{feed['publisher']}]: {parsed.bozo_exception}")
 
         dir_path = os.path.join(self.downloads_dir, feed['language'], feed['language_code'], feed['publisher'])
         os.makedirs(dir_path, exist_ok=True)
