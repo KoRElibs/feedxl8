@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import ssl
@@ -12,6 +13,7 @@ import urllib.error
 import urllib.parse
 from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from PIL import Image
 
 PROXY_PREFIX     = '/meili'
 IMG_PROXY_PREFIX = '/imgproxy'
@@ -26,11 +28,13 @@ class FeedXL8Handler(SimpleHTTPRequestHandler):
     """
 
     # Populated by FeedXL8Webserver.run() before the server starts.
-    _meili_url       = ''
-    _meili_headers   = {}
-    _image_cache_dir = ''
-    _img_locks       = {}
-    _img_locks_lock  = threading.Lock()
+    _meili_url          = ''
+    _meili_headers      = {}
+    _image_cache_dir    = ''
+    _image_max_width    = 480
+    _image_max_height   = 300
+    _img_locks          = {}
+    _img_locks_lock     = threading.Lock()
 
     def _proxy(self, method):
         target = self._meili_url + self.path[len(PROXY_PREFIX):]
@@ -90,8 +94,23 @@ class FeedXL8Handler(SimpleHTTPRequestHandler):
                 try:
                     req = urllib.request.Request(url, headers={'User-Agent': 'FeedXL8/1.0'})
                     with urllib.request.urlopen(req, timeout=10) as resp:
-                        data = resp.read()
-                        ct   = resp.headers.get('Content-Type', 'image/jpeg').split(';')[0].strip()
+                        raw = resp.read()
+
+                    # Pixel-launder: decode to raw pixels and re-encode as a fresh
+                    # JPEG, stripping all EXIF, ICC profiles, comments, and any
+                    # embedded payloads. Resize to configured max dimensions.
+                    img = Image.open(io.BytesIO(raw)).convert('RGB')
+                    img.thumbnail(
+                        (self.__class__._image_max_width, self.__class__._image_max_height),
+                        Image.LANCZOS
+                    )
+                    clean = Image.new('RGB', img.size)
+                    clean.putdata(list(img.getdata()))
+                    buf = io.BytesIO()
+                    clean.save(buf, format='JPEG', quality=85, optimize=True)
+                    data = buf.getvalue()
+                    ct   = 'image/jpeg'
+
                     os.makedirs(cache_dir, exist_ok=True)
                     with open(cache_file, 'wb') as f:
                         f.write(data)
@@ -174,8 +193,10 @@ class FeedXL8Webserver:
             self.key             = s.get('web_tls_key',  '/etc/letsencrypt/live/example.com/privkey.pem')
             self.meili_url       = s.get('meili_url', 'http://localhost:7700').rstrip('/')
             self.meili_api_key   = s.get('meili_api_key', '')
-            self.retention_hours = int(s.get('retention_hours', 24))
-            self.image_cache_dir = resolve_dir('image_cache_dir', 'imgcache')
+            self.retention_hours  = int(s.get('retention_hours', 24))
+            self.image_cache_dir  = resolve_dir('image_cache_dir', 'imgcache')
+            self.image_max_width  = int(s.get('image_proxy_max_width',  480))
+            self.image_max_height = int(s.get('image_proxy_max_height', 300))
 
             logging.getLogger().setLevel(getattr(logging, s.get('log_level', 'INFO').upper(), logging.INFO))
             logging.info(f"Config loaded: proxy → {self.meili_url}, image cache → {self.image_cache_dir}")
@@ -204,7 +225,9 @@ class FeedXL8Webserver:
             'Authorization': f'Bearer {self.meili_api_key}',
             'Content-Type':  'application/json',
         }
-        FeedXL8Handler._image_cache_dir = self.image_cache_dir
+        FeedXL8Handler._image_cache_dir  = self.image_cache_dir
+        FeedXL8Handler._image_max_width  = self.image_max_width
+        FeedXL8Handler._image_max_height = self.image_max_height
 
         serve_dir = os.path.dirname(os.path.abspath(__file__))
         handler = partial(FeedXL8Handler, directory=serve_dir)

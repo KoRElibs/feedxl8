@@ -105,6 +105,11 @@ web_port = 8080
 # Where proxied images are cached (derived from data_dir if not set).
 # image_cache_dir = /opt/feedxl8/imgcache
 
+# Maximum dimensions for proxied images (pixels). Images are scaled down
+# proportionally if either dimension exceeds the limit; never upscaled.
+image_proxy_max_width  = 480
+image_proxy_max_height = 300
+
 # Set web_tls = true to enable HTTPS.
 # Point cert/key at your Let's Encrypt (or other) certificate files.
 # Typical certbot paths (replace example.com with your domain):

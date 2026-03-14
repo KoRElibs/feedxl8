@@ -150,6 +150,10 @@ This works natively on macOS, iOS, Android, Linux, and Windows 11 with a Chromiu
 
 If you need consistent SVG flag rendering across all platforms, [flag-icons](https://github.com/lipis/flag-icons) is a self-hostable alternative: download the package, serve the `css/` and `flags/` directories as static files alongside `index.html`, add a `<link>` to the local CSS, and replace the `toFlag()` call in `index.html` with a `<span class="fi fi-xx">` element using the lowercased country code.
 
+### Image proxy
+
+The webserver proxies all article images through `/imgproxy` rather than serving them directly from their source URLs. Every image is fully decoded to raw pixels and re-encoded as a fresh JPEG before being cached and served — stripping all EXIF data, ICC profiles, and embedded metadata. This eliminates image-based exploit payloads, prevents the browser from leaking the user's IP to third-party image hosts, and reduces bandwidth by resizing images to a configurable maximum resolution.
+
 ### Other settings
 
 `feedxl8.conf.example` documents all remaining options: scan and publish intervals, file retention, translation batch sizes, webserver host/port, and TLS configuration.
