@@ -128,7 +128,7 @@
 
     if(hit.image_url){
       const img = document.createElement("img");
-      img.src = hit.image_url; img.className = "thumb"; img.alt = "";
+      img.src = "/imgproxy?url=" + encodeURIComponent(hit.image_url); img.className = "thumb"; img.alt = "";
       left.appendChild(img);
     }
 

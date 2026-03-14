@@ -22,7 +22,16 @@ class FeedXL8Scanner:
         self.feeds, self.settings = [], {}
         self._load_config()
         self.scan_interval = int(self.settings.get('scan_interval_minutes', 30)) * 60
-        self.downloads_dir = self.settings.get('downloads_dir', '/opt/feedxl8/downloads')
+        s = self.settings
+
+        def resolve_dir(key, default_name):
+            val = s.get(key, '').strip()
+            if val:
+                return val
+            data_dir = s.get('data_dir', '').strip()
+            return os.path.join(data_dir, default_name) if data_dir else default_name
+
+        self.downloads_dir = resolve_dir('downloads_dir', 'downloads')
         logging.getLogger().setLevel(getattr(logging, self.settings.get('log_level', 'INFO').upper(), logging.INFO))
         self.IMAGE_SRC_REGEX = re.compile(r'<[^>]*\bsrc\s*=\s*[\'"]([^\'"]+\.(?:jpg|jpeg|png|gif|webp))[\'"][^>]*>', re.IGNORECASE)
         logging.info("FeedXL8 Scanner initialized.")

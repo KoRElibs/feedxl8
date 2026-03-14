@@ -37,10 +37,17 @@ class FeedXL8Publisher:
             self.max_meili_batch_size = int(s.get('max_meili_batch_size', 5000000))
             self.publish_interval = int(s.get('publish_interval_minutes', 5)) * 60
             self.retention_hours = int(s.get('retention_hours', 24))
-            target_lang = s['target_language'].strip()
-            target_code = s['target_language_code'].strip()
-            translated_dir = s.get('translated_dir', '/opt/feedxl8/translated')
-            published_dir = s.get('published_dir', '/opt/feedxl8/published')
+            def resolve_dir(key, default_name):
+                val = s.get(key, '').strip()
+                if val:
+                    return val
+                data_dir = s.get('data_dir', '').strip()
+                return os.path.join(data_dir, default_name) if data_dir else default_name
+
+            target_lang    = s['target_language'].strip()
+            target_code    = s['target_language_code'].strip()
+            translated_dir = resolve_dir('translated_dir', 'translated')
+            published_dir  = resolve_dir('published_dir',  'published')
             self.doc_dir = os.path.join(translated_dir, target_lang, target_code)
             self.published_doc_dir = os.path.join(published_dir, target_lang, target_code)
             self.published_dir = published_dir

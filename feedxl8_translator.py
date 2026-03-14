@@ -44,9 +44,17 @@ class FeedXL8Translator:
             self.max_translate_batch_size = int(s.get('max_translate_batch_size', 4000))
             self.max_feed_summary_size = int(s.get('max_feed_summary_size', 400))
             self.retention_hours = int(s.get('retention_hours', 24))
-            self.downloads_dir = s.get('downloads_dir', '/opt/feedxl8/downloads')
-            self.translated_dir = s.get('translated_dir', '/opt/feedxl8/translated')
-            self.published_dir = s.get('published_dir', '/opt/feedxl8/published')
+
+            def resolve_dir(key, default_name):
+                val = s.get(key, '').strip()
+                if val:
+                    return val
+                data_dir = s.get('data_dir', '').strip()
+                return os.path.join(data_dir, default_name) if data_dir else default_name
+
+            self.downloads_dir  = resolve_dir('downloads_dir',  'downloads')
+            self.translated_dir = resolve_dir('translated_dir', 'translated')
+            self.published_dir  = resolve_dir('published_dir',  'published')
             logging.getLogger().setLevel(getattr(logging, s.get('log_level', 'INFO').upper(), logging.INFO))
             logging.info(f"Config loaded: target={self.target_languages}")
         except Exception as e:

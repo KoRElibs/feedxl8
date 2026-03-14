@@ -3,6 +3,19 @@
 # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
 log_level = INFO
 
+# ── Data directories ──────────────────────────────────────────────────────────
+
+# Base directory for all data. Set to an absolute path in production.
+# Leave empty to use relative paths from the working directory (development).
+data_dir = /opt/feedxl8
+
+# Individual data directories derive from data_dir/<name> when not set.
+# Uncomment and override here only if you need non-standard paths.
+# downloads_dir   = /opt/feedxl8/downloads
+# translated_dir  = /opt/feedxl8/translated
+# published_dir   = /opt/feedxl8/published
+# image_cache_dir = /opt/feedxl8/imgcache
+
 # ── Ollama (AI translator) ────────────────────────────────────────────────────
 
 # Ollama server URL
@@ -49,10 +62,7 @@ scan_interval_minutes = 15
 # How long to keep files in all data directories (hours, 0 = keep forever)
 retention_hours = 24
 
-# Where raw downloaded feed items are stored.
-# Use absolute paths in production, or relative paths for development
-# (relative paths resolve from the working directory, i.e. the install dir).
-downloads_dir = /opt/feedxl8/downloads
+# Where raw downloaded feed items are stored (derived from data_dir if not set).
 
 # ── Translator ────────────────────────────────────────────────────────────────
 
@@ -63,8 +73,7 @@ target_language_code = en-GB
 # How often to check for new items to translate (minutes)
 translate_interval_minutes = 15
 
-# Where translated feed items are stored (same path rules as downloads_dir)
-translated_dir = /opt/feedxl8/translated
+# Where translated feed items are stored (derived from data_dir if not set).
 
 # How long to wait for a translation response before giving up (seconds)
 translate_timeout_seconds = 50
@@ -85,14 +94,16 @@ max_meili_batch_size = 50000
 
 # Where successfully indexed documents are moved after publishing.
 # Serves as a deduplication record — files here are never re-published.
-# Cleaned up by retention_hours along with all other data directories.
-published_dir = /opt/feedxl8/published
+# Derived from data_dir if not set.
 
 # ── Webserver ─────────────────────────────────────────────────────────────────
 
 # Address and port to listen on
 web_host = 127.0.0.1
 web_port = 8080
+
+# Where proxied images are cached (derived from data_dir if not set).
+# image_cache_dir = /opt/feedxl8/imgcache
 
 # Set web_tls = true to enable HTTPS.
 # Point cert/key at your Let's Encrypt (or other) certificate files.

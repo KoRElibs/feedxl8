@@ -3,6 +3,7 @@ feeddata/
 downloads/
 translated/
 published/
+imgcache/
 *.conf
 *.cache.json
 *.db
