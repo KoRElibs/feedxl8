@@ -95,6 +95,15 @@
   function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
   function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
 
+  function toFlag(code){
+    if(!code || code.length !== 2) return code;
+    const base = 0x1F1E6 - 65;
+    return String.fromCodePoint(
+      code.toUpperCase().charCodeAt(0) + base,
+      code.toUpperCase().charCodeAt(1) + base
+    );
+  }
+
   function fmtDate(iso){
     if(!iso) return "";
     try{ return new Date(iso).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
@@ -121,7 +130,9 @@
     if(hit.publisher) meta.appendChild(Object.assign(document.createElement("span"),{textContent: hit.publisher}));
     if(hit.published) meta.appendChild(Object.assign(document.createElement("span"),{textContent: fmtDate(hit.published)}));
     if(hit.country){
-      const b = document.createElement("span"); b.className = "badge"; b.textContent = hit.country;
+      const b = document.createElement("span"); b.className = "badge";
+      b.textContent = toFlag(hit.country);
+      b.title = hit.country;
       meta.appendChild(b);
     }
 
@@ -162,13 +173,14 @@
       });
       if(!res.ok) return;
       const { facetDistribution = {} } = await res.json();
-      const addOptions = (sel, dist) => {
+      const addOptions = (sel, dist, label) => {
         Object.keys(dist).filter(Boolean).sort((a,b)=>a.localeCompare(b)).forEach(v => {
-          sel.appendChild(Object.assign(document.createElement("option"),{value:v,textContent:v}));
+          const text = label === "country" ? toFlag(v) + " " + v : v;
+          sel.appendChild(Object.assign(document.createElement("option"),{value:v,textContent:text}));
         });
       };
-      if(facetDistribution.country)   addOptions(countrySel,   facetDistribution.country);
-      if(facetDistribution.publisher) addOptions(publisherSel, facetDistribution.publisher);
+      if(facetDistribution.country)   addOptions(countrySel,   facetDistribution.country,   "country");
+      if(facetDistribution.publisher) addOptions(publisherSel, facetDistribution.publisher, "publisher");
     }catch(e){ console.warn("Failed to load facets:", e); }
   }
 

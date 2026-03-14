@@ -140,6 +140,14 @@ language_code = en-GB
 
 `feedxl8.conf.example` includes example feed sources with a focus on European news outlets.
 
+### Country flags
+
+Each article is tagged with the flag of its source country. Flags are rendered using Unicode emoji — the two-letter country code (e.g. `NO`) is converted to a pair of Unicode Regional Indicator characters that modern operating systems and browsers combine into a flag glyph. No fonts, no CDN, no external requests of any kind.
+
+This works natively on macOS, iOS, Android, Linux, and Windows 11 with a Chromium-based browser. On older Windows versions flags may render as two plain letters rather than a glyph — the country code is always available as a tooltip on hover regardless.
+
+If you need consistent SVG flag rendering across all platforms, [flag-icons](https://github.com/lipis/flag-icons) is a self-hostable alternative: download the package, serve the `css/` and `flags/` directories as static files alongside `index.html`, add a `<link>` to the local CSS, and replace the `toFlag()` call in `index.html` with a `<span class="fi fi-xx">` element using the lowercased country code.
+
 ### Other settings
 
 `feedxl8.conf.example` documents all remaining options: scan and publish intervals, file retention, translation batch sizes, webserver host/port, and TLS configuration.
