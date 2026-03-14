@@ -7,16 +7,46 @@ FeedXL8 collects RSS feeds from configurable news sources, translates their cont
 ## Architecture
 
 ```mermaid
-flowchart LR
-    RSS[RSS Feeds] --> Scanner
-    Scanner -->|JSON per item| Downloads[(Downloads)]
-    Downloads --> Translator
-    Translator <-->|LLM via Ollama| AI([AI Model])
-    Translator -->|Translated JSON| Translated[(Translated)]
-    Translated --> Publisher
-    Publisher -->|Batch index| Meili[(Meilisearch)]
-    Meili <--> Webserver
-    Webserver -->|Proxied search| Browser([Browser])
+sequenceDiagram
+    box External
+        participant RSS as News Providers
+    end
+    box FeedXL8 Python Services
+        participant Scanner
+        participant Translator
+        participant Publisher
+        participant Webserver
+    end
+    box Infrastructure
+        participant AI as Ollama
+        participant Meili as Meilisearch
+    end
+    box External
+        actor Browser
+    end
+
+    loop Every poll interval
+        Scanner->>RSS: Fetch news feeds
+        RSS-->>Scanner: Items
+        Scanner->>Scanner: Store JSON per item
+    end
+
+    loop Every translation interval
+        Translator->>Scanner: Read pending items
+        Translator->>AI: Translate batch
+        AI-->>Translator: Translated text
+        Translator->>Translator: Store translated JSON
+    end
+
+    loop Every publish interval
+        Publisher->>Translator: Read translated items
+        Publisher->>Meili: Batch index
+    end
+
+    Browser->>Webserver: Search query
+    Webserver->>Meili: Proxied query
+    Meili-->>Webserver: Results
+    Webserver-->>Browser: Response
 ```
 
 ## Components
